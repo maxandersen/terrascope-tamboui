@@ -6,9 +6,19 @@ final class View {
     double centerLon = 0, centerLat = 20, zoom = 1;   // zoom 1 = whole world
 
     final double zoomMin, zoomMax, zoomStep, panFrac;
+    int cols = 1, rows = 1;                        // map area cell size, set each frame
     View(Config cfg) {
         zoomMin = cfg.zoomMin; zoomMax = cfg.zoomMax; zoomStep = cfg.zoomStep; panFrac = cfg.panStep;
         zoom = zoomMin;
+    }
+
+    // Cell (x,y) of a lon/lat within the map area, matching Canvas label placement,
+    // or null if outside the view.
+    int[] cellOf(double lon, double lat) {
+        if (!contains(lon, lat)) return null;
+        return new int[]{
+            (int) Math.round((lon - x0()) / lonSpan() * (cols - 1)),
+            (int) Math.round((y1() - lat) / latSpan() * (rows - 1))};
     }
 
     double lonSpan() { return 360 / zoom; }

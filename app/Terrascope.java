@@ -85,7 +85,7 @@ public final class Terrascope {
         // large/medium (detail incl. Billund). Overlap is harmless (same spot).
         var airports = new ArrayList<>(ref.airports);
         airports.addAll(data.airports);
-        airports.sort((a, b) -> b.rank() - a.rank());   // draw majors last -> they win label collisions
+        airports.sort((a, b) -> a.rank() - b.rank());   // majors first -> they win label collisions
         overlays = List.of(
             new CoastlineLayer(data), new ProvinceLayer(data, cfg), new CityLayer(data, cfg, ref),
             flightLayer, new QuakeLayer(), new AirportLayer(airports));   // airports last = on top
@@ -582,6 +582,7 @@ public final class Terrascope {
             .build();
         block.render(area, buffer);
         Rect inner = block.inner(area);
+        view.cols = inner.width(); view.rows = inner.height();   // for label collision placement
 
         // Glyph overlays first (Canvas setString sets symbol+fg)...
         Canvas.builder()

@@ -26,6 +26,32 @@ final class Polyline {
     }
 }
 
+/*
+ * Label collision placement (basemap/layer.py): place highest priority first,
+ * keep a label only if its span (+/-1 col padding, rows y-1..y+1) doesn't
+ * overlap one already placed. Crowded views thin themselves out instead of
+ * piling names up. Shared by the city and airport layers.
+ */
+final class LabelPlacer {
+    private final Map<Integer, List<int[]>> occupied = new java.util.HashMap<>();
+    private final java.util.Set<String> names = new java.util.HashSet<>();
+    private static final int PAD = 1;
+
+    boolean place(View view, double lon, double lat, String text) {
+        if (!names.add(text)) return false;              // dedup (country + same-name city)
+        int[] c = view.cellOf(lon, lat);
+        if (c == null) return false;
+        int x = c[0], y = c[1], len = text.length();
+        if (x + len > view.cols) return false;           // would run off the edge
+        int start = x - PAD, end = x + len + PAD;
+        for (int row = y - 1; row <= y + 1; row++)
+            for (int[] seg : occupied.getOrDefault(row, List.of()))
+                if (start < seg[1] && seg[0] < end) return false;
+        occupied.computeIfAbsent(y, k -> new java.util.ArrayList<>()).add(new int[]{x, x + len});
+        return true;
+    }
+}
+
 /** Country coastline outlines. */
 final class CoastlineLayer extends AbstractLayer {
     private final MapData data;
@@ -55,22 +81,32 @@ final class CityLayer extends AbstractLayer {
     CityLayer(MapData data, Config cfg, ReferenceData ref) { super(true); this.data = data; this.cfg = cfg; this.ref = ref; }
     public char key() { return 'c'; }
     public String label() { return "cities"; }
+
+    private record Cand(double lon, double lat, String text, double prio, Color color, boolean dot) { }
+
     public void draw(Context ctx, View view) {
-        // Country ISO codes at world zoom, giving way to city names as you zoom in.
+        long popFloor = cfg.cityPopFloor(view.zoom);
+        List<Cand> cands = new ArrayList<>();
+        // Country ISO codes at world zoom -- highest priority, ranked by importance.
         if (view.zoom < 3)
             for (ReferenceData.Country c : ref.countries)
                 if (view.contains(c.lon(), c.lat()))
-                    ctx.print(c.lon(), c.lat(), Span.styled(c.code(), Style.EMPTY.fg(Color.WHITE)));
-        long popFloor = cfg.cityPopFloor(view.zoom);   // from default.yaml city_levels
-        long labelFloor = popFloor * 2;
-        List<double[]> dots = new ArrayList<>();
+                    cands.add(new Cand(c.lon(), c.lat(), c.code(), 1e12 + c.size(), Color.WHITE, false));
+        // Cities: capitals boosted, otherwise by population.
         for (MapData.City c : data.cities) {
             if (c.pop() < popFloor && !c.capital()) continue;
             if (!view.contains(c.lon(), c.lat())) continue;
-            dots.add(new double[]{c.lon(), c.lat()});
-            if (c.pop() >= labelFloor || c.capital())
-                ctx.print(c.lon(), c.lat(), Span.styled(" " + c.name(),
-                    Style.EMPTY.fg(c.capital() ? Color.WHITE : Color.GRAY)));
+            cands.add(new Cand(c.lon(), c.lat(), " " + c.name(), c.pop() + (c.capital() ? 5e8 : 0),
+                c.capital() ? Color.WHITE : Color.GRAY, true));
+        }
+        cands.sort((a, b) -> Double.compare(b.prio(), a.prio()));   // highest priority first
+
+        LabelPlacer placer = new LabelPlacer();
+        List<double[]> dots = new ArrayList<>();
+        for (Cand c : cands) {
+            if (c.dot()) dots.add(new double[]{c.lon(), c.lat()});
+            if (placer.place(view, c.lon(), c.lat(), c.text()))      // keep only if it fits w/o collision
+                ctx.print(c.lon(), c.lat(), Span.styled(c.text(), Style.EMPTY.fg(c.color())));
         }
         if (!dots.isEmpty()) ctx.draw(new Points(dots.toArray(new double[0][]), Color.MAGENTA));
     }
@@ -191,9 +227,12 @@ final class AirportLayer extends AbstractLayer {
         double z = view.zoom;
         int rankMax = z >= 12 ? 10 : z >= 8 ? 8 : z >= 5 ? 6 : z >= 3 ? 4 : 2;
         boolean labels = z >= 5;
-        for (ReferenceData.Airport a : airports) {
+        LabelPlacer placer = new LabelPlacer();          // thin out colliding IATA labels
+        for (ReferenceData.Airport a : airports) {       // already sorted majors-last upstream; iterate as given
             if (a.rank() > rankMax || !view.contains(a.lon(), a.lat())) continue;
-            ctx.print(a.lon(), a.lat(), Span.styled(labels ? "\u25b2 " + a.iata() : "\u25b2", Style.EMPTY.fg(COLOR)));
+            String text = labels && placer.place(view, a.lon(), a.lat(), "\u25b2 " + a.iata())
+                ? "\u25b2 " + a.iata() : "\u25b2";
+            ctx.print(a.lon(), a.lat(), Span.styled(text, Style.EMPTY.fg(COLOR)));
         }
     }
 }
