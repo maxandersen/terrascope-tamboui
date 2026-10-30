@@ -1,0 +1,11 @@
+# Secrets — never commit
+opensky.json
+
+# jbang / build artifacts
+.jbang/
+out/
+*.class
+*.jar
+
+# OS
+.DS_Store
