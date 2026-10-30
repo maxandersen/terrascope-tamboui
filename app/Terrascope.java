@@ -145,7 +145,10 @@ public final class Terrascope {
             backend.hideCursor();
             backend.enableMouseCapture();
             Terminal<Backend> terminal = new Terminal<>(backend);
-            backend.onResize(() -> terminal.draw(this::ui));
+            // No onResize draw: the callback runs on another thread and would race
+            // the main loop over the shared diff buffer (NPE in DiffResult.cellAt).
+            // terminal.draw() re-checks the size and resizes itself each iteration,
+            // and the loop ticks at least every 100ms, so resizes are picked up.
             while (running) {
                 terminal.draw(this::ui);
                 handleKey(backend);
