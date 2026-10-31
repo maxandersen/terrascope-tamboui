@@ -168,7 +168,7 @@ public final class Terrascope {
             case '-', '_' -> view.zoomBy(1 / view.zoomStep);
             case '0' -> view.reset();
             case '\t' -> { tab = (tab + 1) % TABS.size(); applyTab(); }
-            case 'i', 'I' -> showPanel = !showPanel;
+            case 'i', 'I', 'h', 'H' -> showPanel = !showPanel;
             case '?' -> showHelp = !showHelp;
             case 'a', 'A' -> { radar.toggleAnimate(); if (radar.animating() && !radar.enabled()) radar.toggle(); }
             case ',', '<' -> scrubTime(-1);           // time slider back
@@ -557,7 +557,7 @@ public final class Terrascope {
         List<Line> lines = new ArrayList<>();
         String[][] keys = {
             {"\u2190\u2191\u2193\u2192", "pan the map"}, {"+ / -", "zoom in / out"}, {"0", "reset view"},
-            {"Tab", "next view preset"}, {"i", "toggle info panel"}, {"?", "toggle this help"},
+            {"Tab", "next view preset"}, {"h / i", "hide/show info panel"}, {"?", "toggle this help"},
             {"l o p c", "land coast provinces cities"}, {"r f e n", "radar flights quakes day/night"},
             {"a", "animate radar frames (loop)"},
             {", .", "time slider (radar frames / terminator)"},
@@ -682,7 +682,8 @@ public final class Terrascope {
             Span.raw(" z").cyan(), Span.raw(String.format("%.1fx", view.zoom)).dim(),
             Span.raw("  \u2190\u2191\u2193\u2192").yellow(), Span.raw(" pan").dim(),
             Span.raw(" +/-").yellow(), Span.raw(" zoom").dim(),
-            Span.raw(" 0").yellow(), Span.raw(" reset").dim(), Span.raw("  ").dim()));
+            Span.raw(" 0").yellow(), Span.raw(" reset").dim(),
+            Span.raw(" h").yellow(), Span.raw(" panel").dim(), Span.raw("  ").dim()));
         for (Toggleable t : toggles) {
             spans.add(Span.raw(" " + t.key()).yellow());
             spans.add(Span.styled(" " + t.label(), Style.EMPTY.fg(t.enabled() ? Color.GREEN : Color.DARK_GRAY)));
