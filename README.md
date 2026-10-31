@@ -7,6 +7,14 @@ and `tamboui-image` `BrailleProtocol` (filled raster base).
 
 ## Run
 
+Straight from GitHub via the jbang catalog alias — no clone needed:
+
+```bash
+jbang map@maxandersen/terrascope-tamboui          # (or terrascope@maxandersen/terrascope-tamboui)
+```
+
+Or from a clone:
+
 ```bash
 cd app
 jbang Terrascope.java                      # interactive

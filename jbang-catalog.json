@@ -1,0 +1,12 @@
+{
+  "aliases": {
+    "map": {
+      "script-ref": "app/Terrascope.java",
+      "description": "Terrascope on TamboUI — a braille terminal world map with live weather radar, flights, earthquakes, day/night and airports."
+    },
+    "terrascope": {
+      "script-ref": "app/Terrascope.java",
+      "description": "Terrascope on TamboUI — a braille terminal world map with live weather radar, flights, earthquakes, day/night and airports."
+    }
+  }
+}
